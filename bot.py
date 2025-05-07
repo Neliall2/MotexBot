@@ -305,7 +305,7 @@ async def process_info_comment(update: Update, context: ContextTypes.DEFAULT_TYP
     return ConversationHandler.END
 
 
-def main():
+async def main():
     application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
 
     refusal_conv = ConversationHandler(
@@ -368,7 +368,7 @@ def main():
     application.add_handler(info_conv)
     application.add_handler(CommandHandler('start', start))
 
-    application.run_polling()
+    await application.run_polling()
 
 
 if __name__ == '__main__':
