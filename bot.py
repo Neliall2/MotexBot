@@ -12,6 +12,12 @@ from telegram.ext import (
 from config import Config
 from bitrix_api import BitrixAPI
 from database import Database
+from flask import Flask
+from threading import Thread
+import os
+
+# Создаем Flask приложение
+app = Flask(__name__)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,6 +28,13 @@ logger = logging.getLogger(__name__)
 db = Database()
 STATES = Config.STATES
 
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
 
 def main_menu():
     return ReplyKeyboardMarkup([
