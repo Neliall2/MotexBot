@@ -7,4 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "bot.py"] 
+# Открываем порт для Flask
+EXPOSE ${PORT:-8080}
+
+ENV PORT=8080
+
+CMD ["python", "wsgi.py"] 
