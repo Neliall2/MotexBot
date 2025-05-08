@@ -59,7 +59,7 @@ class BitrixAPI:
             now = datetime.now()
             
             if task_type == 'info':
-                deadline = now + timedelta(hours=3)  # 3 часа для информационных задач
+                deadline = now + timedelta(days=1)  # 1 день для информационных задач
             else:
                 deadline = now + timedelta(days=3)   # 3 дня для претензий и отказов
             
