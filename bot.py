@@ -18,17 +18,21 @@ import os
 import asyncio
 import sys
 from datetime import datetime
+import tempfile
 
 # Создаем Flask приложение
 app = Flask(__name__)
 
 # Настройка логирования
+log_dir = os.path.join(tempfile.gettempdir(), 'bot_logs')
+os.makedirs(log_dir, exist_ok=True)
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(f'logs/bot_{datetime.now().strftime("%Y%m%d")}.log', encoding='utf-8')
+        logging.FileHandler(os.path.join(log_dir, f'bot_{datetime.now().strftime("%Y%m%d")}.log'), encoding='utf-8')
     ]
 )
 

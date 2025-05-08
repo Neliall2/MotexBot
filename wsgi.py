@@ -7,17 +7,18 @@ import logging
 import sys
 from datetime import datetime
 import time
-
-# Создаем директорию для логов, если её нет
-os.makedirs('logs', exist_ok=True)
+import tempfile
 
 # Настройка логирования
+log_dir = os.path.join(tempfile.gettempdir(), 'app_logs')
+os.makedirs(log_dir, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(f'logs/app_{datetime.now().strftime("%Y%m%d")}.log', encoding='utf-8')
+        logging.FileHandler(os.path.join(log_dir, f'app_{datetime.now().strftime("%Y%m%d")}.log'), encoding='utf-8')
     ]
 )
 
