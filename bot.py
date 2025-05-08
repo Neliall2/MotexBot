@@ -229,7 +229,9 @@ async def process_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     task_type = 'claim' if 'claim_type' in user_data else 'refusal'
     task_title = Config.TASK_TITLES[task_type]
-    if task_type == 'claim' and user_data.get('claim_type') == 'Недовоз':
+    
+    # Формируем название задачи в зависимости от типа претензии
+    if task_type == 'claim':
         task_title = f"Претензия {user_data['claim_type']}"
 
     result = BitrixAPI.create_task(task_type, {
