@@ -422,9 +422,7 @@ async def main():
                 read_timeout=30,
                 write_timeout=30,
                 connect_timeout=30,
-                pool_timeout=30,
-                bootstrap_retries=3,
-                read_retries=3
+                pool_timeout=30
             )
             
             # Ждем сигнала остановки
