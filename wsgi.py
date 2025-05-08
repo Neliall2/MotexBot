@@ -1,4 +1,4 @@
-from bot import app, main
+from bot import app, main, stop_event
 import os
 import asyncio
 from threading import Thread
@@ -50,18 +50,14 @@ async def health_check():
             await asyncio.sleep(60)  # При ошибке ждем минуту перед следующей попыткой
 
 async def keep_alive():
-    """Поддержание активности приложения на Render"""
-    while True:
+    """Функция для поддержания активности приложения"""
+    while not stop_event.is_set():
         try:
-            # Отправляем GET запрос на корневой URL для поддержания активности
             async with httpx.AsyncClient() as client:
-                response = await client.get('https://your-app-name.onrender.com/')
-                if response.status_code == 200:
-                    logger.info("Keep-alive запрос успешен")
-                else:
-                    logger.warning(f"Keep-alive запрос вернул статус {response.status_code}")
+                response = await client.get('https://motexbot.onrender.com/')
+                logger.info(f"Keep-alive request sent at {datetime.now()}, status: {response.status_code}")
         except Exception as e:
-            logger.error(f"Ошибка при отправке keep-alive запроса: {e}")
+            logger.error(f"Error in keep-alive request: {e}")
         await asyncio.sleep(300)  # Отправляем запрос каждые 5 минут
 
 async def run_all():
@@ -100,11 +96,7 @@ async def run_all():
 def handle_exit(signum, frame):
     """Обработчик сигналов завершения"""
     logger.info(f"Получен сигнал завершения {signum}")
-    # Устанавливаем флаг остановки
-    if hasattr(main, 'stop_event'):
-        main.stop_event.set()
-    # Даем время на корректное завершение
-    time.sleep(2)
+    stop_event.set()
     sys.exit(0)
 
 if __name__ == '__main__':
