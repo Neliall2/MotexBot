@@ -337,12 +337,21 @@ async def main():
                 if bot_instance is not None:
                     logger.info("Останавливаем предыдущий экземпляр бота...")
                     try:
+                        # Принудительно останавливаем все обновления
+                        await bot_instance.bot.delete_webhook(drop_pending_updates=True)
+                        await asyncio.sleep(1)
+                        
+                        # Останавливаем бота
                         await bot_instance.stop()
                         await bot_instance.shutdown()
+                        
+                        # Дополнительная очистка
+                        await bot_instance.bot.get_updates(offset=-1, limit=1)
+                        await asyncio.sleep(2)
                     except Exception as e:
                         logger.error(f"Ошибка при остановке предыдущего экземпляра: {e}", exc_info=True)
-                    bot_instance = None
-                    await asyncio.sleep(2)  # Даем время на завершение
+                    finally:
+                        bot_instance = None
 
                 logger.info("Инициализация нового экземпляра бота...")
                 application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
