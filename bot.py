@@ -16,14 +16,22 @@ from flask import Flask
 from threading import Thread
 import os
 import asyncio
+import sys
+from datetime import datetime
 
 # Создаем Flask приложение
 app = Flask(__name__)
 
+# Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.DEBUG
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(f'logs/bot_{datetime.now().strftime("%Y%m%d")}.log', encoding='utf-8')
+    ]
 )
+
 logger = logging.getLogger(__name__)
 
 db = Database()
@@ -34,8 +42,12 @@ def home():
     return "Bot is running!"
 
 def run_flask():
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    try:
+        port = int(os.environ.get('PORT', 8080))
+        logger.info(f"Запуск Flask на порту {port}")
+        app.run(host='0.0.0.0', port=port)
+    except Exception as e:
+        logger.error(f"Ошибка Flask: {e}", exc_info=True)
 
 def main_menu():
     return ReplyKeyboardMarkup([
@@ -309,6 +321,7 @@ async def process_info_comment(update: Update, context: ContextTypes.DEFAULT_TYP
 async def main():
     while True:  # Бесконечный цикл для переподключения
         try:
+            logger.info("Инициализация бота...")
             application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
 
             refusal_conv = ConversationHandler(
@@ -374,25 +387,31 @@ async def main():
             # Добавляем обработчик ошибок
             application.add_error_handler(error_handler)
 
-            print("Бот запущен и готов к работе")
-            await application.run_polling(drop_pending_updates=True)
+            logger.info("Бот успешно инициализирован")
+            await application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
         except Exception as e:
-            print(f"Произошла ошибка: {e}")
-            print("Попытка переподключения через 5 секунд...")
-            await asyncio.sleep(5)  # Ждем 5 секунд перед повторной попыткой
+            logger.error(f"Критическая ошибка в работе бота: {e}", exc_info=True)
+            logger.info("Попытка переподключения через 5 секунд...")
+            await asyncio.sleep(5)
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик ошибок бота"""
-    print(f"Произошла ошибка при обработке обновления {update}: {context.error}")
+    logger.error(f"Ошибка при обработке обновления {update}: {context.error}", exc_info=True)
     try:
         if update and update.effective_message:
             await update.effective_message.reply_text(
                 "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже."
             )
     except Exception as e:
-        print(f"Ошибка при отправке сообщения об ошибке: {e}")
-
+        logger.error(f"Ошибка при отправке сообщения об ошибке: {e}", exc_info=True)
 
 if __name__ == '__main__':
-    main()
+    try:
+        logger.info("Запуск бота...")
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Бот остановлен пользователем")
+    except Exception as e:
+        logger.error(f"Критическая ошибка при запуске бота: {e}", exc_info=True)
+        sys.exit(1)

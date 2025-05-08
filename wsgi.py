@@ -6,6 +6,10 @@ import nest_asyncio
 import logging
 import sys
 from datetime import datetime
+import time
+
+# Создаем директорию для логов, если её нет
+os.makedirs('logs', exist_ok=True)
 
 # Настройка логирования
 logging.basicConfig(
@@ -13,7 +17,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('app.log')
+        logging.FileHandler(f'logs/app_{datetime.now().strftime("%Y%m%d")}.log', encoding='utf-8')
     ]
 )
 
@@ -28,7 +32,19 @@ def run_flask():
         logger.info(f"Запуск Flask на порту {port}")
         app.run(host='0.0.0.0', port=port)
     except Exception as e:
-        logger.error(f"Ошибка Flask: {e}")
+        logger.error(f"Ошибка Flask: {e}", exc_info=True)
+
+async def health_check():
+    """Периодическая проверка состояния приложения"""
+    while True:
+        try:
+            logger.info("Проверка состояния приложения...")
+            # Здесь можно добавить проверку соединения с базой данных
+            # или другие проверки состояния
+            await asyncio.sleep(300)  # Проверка каждые 5 минут
+        except Exception as e:
+            logger.error(f"Ошибка при проверке состояния: {e}", exc_info=True)
+            await asyncio.sleep(60)  # При ошибке ждем минуту перед следующей попыткой
 
 async def run_all():
     # Запускаем Flask в отдельном потоке
@@ -37,12 +53,15 @@ async def run_all():
     flask_thread.start()
     logger.info("Flask запущен в отдельном потоке")
     
+    # Запускаем проверку состояния
+    health_check_task = asyncio.create_task(health_check())
+    
     while True:  # Бесконечный цикл для поддержания работы приложения
         try:
             logger.info("Запуск бота...")
             await main()
         except Exception as e:
-            logger.error(f"Ошибка в main: {e}")
+            logger.error(f"Ошибка в main: {e}", exc_info=True)
             logger.info("Попытка перезапуска через 5 секунд...")
             await asyncio.sleep(5)
         finally:
@@ -59,5 +78,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logger.info("Приложение остановлено пользователем")
     except Exception as e:
-        logger.error(f"Критическая ошибка приложения: {e}")
+        logger.error(f"Критическая ошибка приложения: {e}", exc_info=True)
         sys.exit(1) 
