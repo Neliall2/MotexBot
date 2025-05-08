@@ -379,127 +379,131 @@ async def main():
                     await asyncio.sleep(2)  # Даем время на завершение
 
                 logger.info("Инициализация нового экземпляра бота...")
-                application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
-
-                # Настройка обработчиков
-                refusal_conv = ConversationHandler(
-                    entry_points=[MessageHandler(filters.Regex(r'^🚫 Отказ$'), handle_refusal)],
-                    states={
-                        STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
-                        STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
-                        STATES['ARTICLES']: [
-                            MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
-                            MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
-                        ],
-                        STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
-                        STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
-                        STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
-                    },
-                    fallbacks=[CommandHandler('cancel', cancel)],
-                    name='refusal_conversation',
-                    persistent=False
-                )
-
-                claim_conv = ConversationHandler(
-                    entry_points=[MessageHandler(filters.Regex(r'^⚠️ Претензия$'), handle_claim)],
-                    states={
-                        STATES['CLAIM_TYPE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_claim_type)],
-                        STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
-                        STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
-                        STATES['ARTICLES']: [
-                            MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
-                            MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
-                        ],
-                        STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
-                        STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
-                        STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
-                    },
-                    fallbacks=[CommandHandler('cancel', cancel)],
-                    name='claim_conversation',
-                    persistent=False
-                )
-
-                info_conv = ConversationHandler(
-                    entry_points=[MessageHandler(filters.Regex(r'^ℹ️ Информация$'), handle_info)],
-                    states={
-                        STATES['INFO_CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_client_code)],
-                        STATES['INFO_ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_route)],
-                        STATES['INFO_COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_comment)]
-                    },
-                    fallbacks=[CommandHandler('cancel', cancel)],
-                    name='info_conversation',
-                    persistent=False
-                )
-
-                application.add_handler(refusal_conv)
-                application.add_handler(claim_conv)
-                application.add_handler(info_conv)
-                application.add_handler(CommandHandler('start', start))
-                application.add_error_handler(error_handler)
-
-                bot_instance = application
-                logger.info("Бот успешно инициализирован")
-
-            # Запускаем бота
-            try:
-                await application.initialize()
-                await application.start()
-                
-                # Инициализируем HTTP-клиент перед началом polling
+                # Создаем HTTP-клиент перед инициализацией бота
                 async with httpx.AsyncClient() as client:
+                    application = (
+                        ApplicationBuilder()
+                        .token(Config.BOT_TOKEN)
+                        .http_version("1.1")
+                        .get_updates_http_version("1.1")
+                        .build()
+                    )
+
+                    # Настройка обработчиков
+                    refusal_conv = ConversationHandler(
+                        entry_points=[MessageHandler(filters.Regex(r'^🚫 Отказ$'), handle_refusal)],
+                        states={
+                            STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
+                            STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
+                            STATES['ARTICLES']: [
+                                MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
+                                MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
+                            ],
+                            STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
+                            STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
+                            STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
+                        },
+                        fallbacks=[CommandHandler('cancel', cancel)],
+                        name='refusal_conversation',
+                        persistent=False
+                    )
+
+                    claim_conv = ConversationHandler(
+                        entry_points=[MessageHandler(filters.Regex(r'^⚠️ Претензия$'), handle_claim)],
+                        states={
+                            STATES['CLAIM_TYPE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_claim_type)],
+                            STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
+                            STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
+                            STATES['ARTICLES']: [
+                                MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
+                                MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
+                            ],
+                            STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
+                            STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
+                            STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
+                        },
+                        fallbacks=[CommandHandler('cancel', cancel)],
+                        name='claim_conversation',
+                        persistent=False
+                    )
+
+                    info_conv = ConversationHandler(
+                        entry_points=[MessageHandler(filters.Regex(r'^ℹ️ Информация$'), handle_info)],
+                        states={
+                            STATES['INFO_CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_client_code)],
+                            STATES['INFO_ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_route)],
+                            STATES['INFO_COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_comment)]
+                        },
+                        fallbacks=[CommandHandler('cancel', cancel)],
+                        name='info_conversation',
+                        persistent=False
+                    )
+
+                    application.add_handler(refusal_conv)
+                    application.add_handler(claim_conv)
+                    application.add_handler(info_conv)
+                    application.add_handler(CommandHandler('start', start))
+                    application.add_error_handler(error_handler)
+
+                    bot_instance = application
+                    logger.info("Бот успешно инициализирован")
+
+                # Запускаем бота
+                try:
+                    await application.initialize()
+                    await application.start()
                     await application.updater.start_polling(
                         drop_pending_updates=True,
                         allowed_updates=Update.ALL_TYPES,
-                        pool_timeout=30,  # Увеличиваем таймаут пула
-                        read_timeout=30,   # Увеличиваем таймаут чтения
-                        write_timeout=30,  # Увеличиваем таймаут записи
-                        connect_timeout=30, # Увеличиваем таймаут подключения
-                        bootstrap_retries=5, # Количество попыток при запуске
-                        read_retries=5,      # Количество попыток при чтении
-                        write_retries=5,     # Количество попыток при записи
-                        http_version="1.1"   # Используем HTTP/1.1 для стабильности
+                        pool_timeout=30,
+                        read_timeout=30,
+                        write_timeout=30,
+                        connect_timeout=30,
+                        bootstrap_retries=5,
+                        read_retries=5,
+                        write_retries=5
                     )
                 
-                # Сбрасываем счетчик попыток при успешном запуске
-                retry_count = 0
-                
-                # Ждем сигнала остановки
-                while not stop_event.is_set():
-                    try:
-                        await asyncio.sleep(1)
-                    except asyncio.CancelledError:
-                        logger.info("Получен сигнал отмены, начинаем корректное завершение работы...")
-                        break
+                    # Сбрасываем счетчик попыток при успешном запуске
+                    retry_count = 0
+                    
+                    # Ждем сигнала остановки
+                    while not stop_event.is_set():
+                        try:
+                            await asyncio.sleep(1)
+                        except asyncio.CancelledError:
+                            logger.info("Получен сигнал отмены, начинаем корректное завершение работы...")
+                            break
 
-                # Корректное завершение работы
-                try:
-                    await application.updater.stop()
-                    await application.stop()
-                    await application.shutdown()
-                    logger.info("Бот успешно остановлен")
-                except Exception as e:
-                    logger.error(f"Ошибка при остановке бота: {e}", exc_info=True)
-            except Exception as e:
-                logger.error(f"Ошибка при запуске бота: {e}", exc_info=True)
-                if bot_instance is not None:
+                    # Корректное завершение работы
                     try:
-                        await bot_instance.stop()
-                        await bot_instance.shutdown()
-                    except Exception as stop_error:
-                        logger.error(f"Ошибка при остановке бота после ошибки запуска: {stop_error}", exc_info=True)
-                    bot_instance = None
-                
-                # Увеличиваем счетчик попыток
-                retry_count += 1
-                if retry_count >= max_retries:
-                    logger.error(f"Достигнуто максимальное количество попыток ({max_retries}). Останавливаем бота.")
-                    stop_event.set()
-                    break
-                
-                # Экспоненциальная задержка перед следующей попыткой
-                delay = min(300, 5 * (2 ** retry_count))  # Максимум 5 минут
-                logger.info(f"Попытка переподключения через {delay} секунд...")
-                await asyncio.sleep(delay)
+                        await application.updater.stop()
+                        await application.stop()
+                        await application.shutdown()
+                        logger.info("Бот успешно остановлен")
+                    except Exception as e:
+                        logger.error(f"Ошибка при остановке бота: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"Ошибка при запуске бота: {e}", exc_info=True)
+                    if bot_instance is not None:
+                        try:
+                            await bot_instance.stop()
+                            await bot_instance.shutdown()
+                        except Exception as stop_error:
+                            logger.error(f"Ошибка при остановке бота после ошибки запуска: {stop_error}", exc_info=True)
+                        bot_instance = None
+                    
+                    # Увеличиваем счетчик попыток
+                    retry_count += 1
+                    if retry_count >= max_retries:
+                        logger.error(f"Достигнуто максимальное количество попыток ({max_retries}). Останавливаем бота.")
+                        stop_event.set()
+                        break
+                    
+                    # Экспоненциальная задержка перед следующей попыткой
+                    delay = min(300, 5 * (2 ** retry_count))  # Максимум 5 минут
+                    logger.info(f"Попытка переподключения через {delay} секунд...")
+                    await asyncio.sleep(delay)
 
         except asyncio.CancelledError:
             logger.info("Получен сигнал отмены в основном цикле")
