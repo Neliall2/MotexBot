@@ -418,11 +418,7 @@ async def main():
             await application.start()
             await application.updater.start_polling(
                 drop_pending_updates=True,
-                allowed_updates=Update.ALL_TYPES,
-                read_timeout=30,
-                write_timeout=30,
-                connect_timeout=30,
-                pool_timeout=30
+                allowed_updates=Update.ALL_TYPES
             )
             
             # Ждем сигнала остановки
