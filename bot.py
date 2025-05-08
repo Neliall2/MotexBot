@@ -347,6 +347,13 @@ async def main():
                 logger.info("Инициализация нового экземпляра бота...")
                 application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
 
+                # Очищаем все обновления перед запуском
+                try:
+                    await application.bot.delete_webhook(drop_pending_updates=True)
+                    await asyncio.sleep(1)
+                except Exception as e:
+                    logger.error(f"Ошибка при очистке обновлений: {e}", exc_info=True)
+
                 # Настройка обработчиков
                 refusal_conv = ConversationHandler(
                     entry_points=[MessageHandler(filters.Regex(r'^🚫 Отказ$'), handle_refusal)],
@@ -407,16 +414,22 @@ async def main():
                 logger.info("Бот успешно инициализирован")
 
             # Запускаем бота с расширенными параметрами
-            await application.run_polling(
+            await application.initialize()
+            await application.start()
+            await application.updater.start_polling(
                 drop_pending_updates=True,
                 allowed_updates=Update.ALL_TYPES,
-                close_loop=False,
-                stop_signals=(),  # Отключаем обработку сигналов завершения
                 read_timeout=30,
                 write_timeout=30,
                 connect_timeout=30,
-                pool_timeout=30
+                pool_timeout=30,
+                bootstrap_retries=3,
+                read_retries=3
             )
+            
+            # Ждем сигнала остановки
+            while not stop_event.is_set():
+                await asyncio.sleep(1)
 
         except Exception as e:
             logger.error(f"Критическая ошибка в работе бота: {e}", exc_info=True)
