@@ -337,31 +337,15 @@ async def main():
                 if bot_instance is not None:
                     logger.info("Останавливаем предыдущий экземпляр бота...")
                     try:
-                        # Принудительно останавливаем все обновления
-                        await bot_instance.bot.delete_webhook(drop_pending_updates=True)
-                        await asyncio.sleep(1)
-                        
-                        # Останавливаем бота
                         await bot_instance.stop()
                         await bot_instance.shutdown()
-                        
-                        # Дополнительная очистка
-                        await bot_instance.bot.get_updates(offset=-1, limit=1)
-                        await asyncio.sleep(2)
                     except Exception as e:
                         logger.error(f"Ошибка при остановке предыдущего экземпляра: {e}", exc_info=True)
-                    finally:
-                        bot_instance = None
+                    bot_instance = None
+                    await asyncio.sleep(2)  # Даем время на завершение
 
                 logger.info("Инициализация нового экземпляра бота...")
                 application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
-
-                # Очищаем все обновления перед запуском
-                try:
-                    await application.bot.delete_webhook(drop_pending_updates=True)
-                    await asyncio.sleep(1)
-                except Exception as e:
-                    logger.error(f"Ошибка при очистке обновлений: {e}", exc_info=True)
 
                 # Настройка обработчиков
                 refusal_conv = ConversationHandler(
@@ -422,13 +406,10 @@ async def main():
                 bot_instance = application
                 logger.info("Бот успешно инициализирован")
 
-            # Запускаем бота с расширенными параметрами
+            # Запускаем бота
             await application.initialize()
             await application.start()
-            await application.updater.start_polling(
-                drop_pending_updates=True,
-                allowed_updates=Update.ALL_TYPES
-            )
+            await application.updater.start_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
             
             # Ждем сигнала остановки
             while not stop_event.is_set():

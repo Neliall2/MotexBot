@@ -63,7 +63,8 @@ class BitrixAPI:
             else:
                 deadline = now + timedelta(days=3)   # 3 дня для претензий и отказов
             
-            deadline_str = deadline.strftime('%d.%m.%Y %H:%M')
+            # Форматируем дату в формате, который ожидает Bitrix24
+            deadline_str = deadline.strftime('%Y-%m-%d %H:%M:%S')
 
             logger.info(f"Название задачи: {title}")
             logger.info(f"Описание задачи: {description}")
