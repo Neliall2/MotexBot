@@ -20,6 +20,7 @@ import sys
 from datetime import datetime
 import tempfile
 import signal
+import httpx
 
 # Создаем Flask приложение
 app = Flask(__name__)
@@ -441,17 +442,21 @@ async def main():
             try:
                 await application.initialize()
                 await application.start()
-                await application.updater.start_polling(
-                    drop_pending_updates=True,
-                    allowed_updates=Update.ALL_TYPES,
-                    pool_timeout=30,  # Увеличиваем таймаут пула
-                    read_timeout=30,   # Увеличиваем таймаут чтения
-                    write_timeout=30,  # Увеличиваем таймаут записи
-                    connect_timeout=30, # Увеличиваем таймаут подключения
-                    bootstrap_retries=5, # Количество попыток при запуске
-                    read_retries=5,      # Количество попыток при чтении
-                    write_retries=5      # Количество попыток при записи
-                )
+                
+                # Инициализируем HTTP-клиент перед началом polling
+                async with httpx.AsyncClient() as client:
+                    await application.updater.start_polling(
+                        drop_pending_updates=True,
+                        allowed_updates=Update.ALL_TYPES,
+                        pool_timeout=30,  # Увеличиваем таймаут пула
+                        read_timeout=30,   # Увеличиваем таймаут чтения
+                        write_timeout=30,  # Увеличиваем таймаут записи
+                        connect_timeout=30, # Увеличиваем таймаут подключения
+                        bootstrap_retries=5, # Количество попыток при запуске
+                        read_retries=5,      # Количество попыток при чтении
+                        write_retries=5,     # Количество попыток при записи
+                        http_version="1.1"   # Используем HTTP/1.1 для стабильности
+                    )
                 
                 # Сбрасываем счетчик попыток при успешном запуске
                 retry_count = 0

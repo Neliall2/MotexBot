@@ -9,7 +9,7 @@ from datetime import datetime
 import time
 import tempfile
 import signal
-import aiohttp
+import httpx
 
 # Настройка логирования
 log_dir = os.path.join(tempfile.gettempdir(), 'app_logs')
@@ -54,12 +54,12 @@ async def keep_alive():
     while True:
         try:
             # Отправляем GET запрос на корневой URL для поддержания активности
-            async with aiohttp.ClientSession() as session:
-                async with session.get('https://your-app-name.onrender.com/') as response:
-                    if response.status == 200:
-                        logger.info("Keep-alive запрос успешен")
-                    else:
-                        logger.warning(f"Keep-alive запрос вернул статус {response.status}")
+            async with httpx.AsyncClient() as client:
+                response = await client.get('https://your-app-name.onrender.com/')
+                if response.status_code == 200:
+                    logger.info("Keep-alive запрос успешен")
+                else:
+                    logger.warning(f"Keep-alive запрос вернул статус {response.status_code}")
         except Exception as e:
             logger.error(f"Ошибка при отправке keep-alive запроса: {e}")
         await asyncio.sleep(300)  # Отправляем запрос каждые 5 минут
