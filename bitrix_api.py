@@ -52,8 +52,8 @@ class BitrixAPI:
 
             # Формируем название задачи
             title = data.get('title', Config.TASK_TITLES[task_type])
-            if task_type == 'claim' and data.get('claim_type') == 'Недовоз':
-                title = f"Претензия {data['claim_type']}"
+            if task_type == 'claim':
+                title = f"Претензия {data.get('claim_type', '')}"
 
             # Устанавливаем крайний срок в зависимости от типа задачи
             now = datetime.now()
