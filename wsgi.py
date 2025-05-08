@@ -61,6 +61,8 @@ async def run_all():
     try:
         logger.info("Запуск бота...")
         await main()
+    except asyncio.CancelledError:
+        logger.info("Получен сигнал отмены, начинаем корректное завершение работы...")
     except Exception as e:
         logger.error(f"Ошибка в main: {e}", exc_info=True)
         logger.info("Попытка перезапуска через 5 секунд...")
@@ -70,7 +72,11 @@ async def run_all():
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         for task in tasks:
             task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        except Exception as e:
+            logger.error(f"Ошибка при завершении задач: {e}", exc_info=True)
+        logger.info("Приложение корректно завершено")
 
 def handle_exit(signum, frame):
     """Обработчик сигналов завершения"""

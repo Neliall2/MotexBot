@@ -413,8 +413,23 @@ async def main():
             
             # Ждем сигнала остановки
             while not stop_event.is_set():
-                await asyncio.sleep(1)
+                try:
+                    await asyncio.sleep(1)
+                except asyncio.CancelledError:
+                    logger.info("Получен сигнал отмены, начинаем корректное завершение работы...")
+                    break
 
+            # Корректное завершение работы
+            try:
+                await application.stop()
+                await application.shutdown()
+                logger.info("Бот успешно остановлен")
+            except Exception as e:
+                logger.error(f"Ошибка при остановке бота: {e}", exc_info=True)
+
+        except asyncio.CancelledError:
+            logger.info("Получен сигнал отмены в основном цикле")
+            break
         except Exception as e:
             logger.error(f"Критическая ошибка в работе бота: {e}", exc_info=True)
             logger.info("Попытка переподключения через 5 секунд...")
