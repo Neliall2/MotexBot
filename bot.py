@@ -406,14 +406,17 @@ async def main():
                 bot_instance = application
                 logger.info("Бот успешно инициализирован")
 
-            # Запускаем бота
-            await application.initialize()
-            await application.start()
-            await application.updater.start_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-            
-            # Ждем сигнала остановки
-            while not stop_event.is_set():
-                await asyncio.sleep(1)
+            # Запускаем бота с расширенными параметрами
+            await application.run_polling(
+                drop_pending_updates=True,
+                allowed_updates=Update.ALL_TYPES,
+                close_loop=False,
+                stop_signals=(),  # Отключаем обработку сигналов завершения
+                read_timeout=30,
+                write_timeout=30,
+                connect_timeout=30,
+                pool_timeout=30
+            )
 
         except Exception as e:
             logger.error(f"Критическая ошибка в работе бота: {e}", exc_info=True)
