@@ -458,10 +458,7 @@ async def main():
                         pool_timeout=30,
                         read_timeout=30,
                         write_timeout=30,
-                        connect_timeout=30,
-                        bootstrap_retries=5,
-                        read_retries=5,
-                        write_retries=5
+                        connect_timeout=30
                     )
                 
                     # Сбрасываем счетчик попыток при успешном запуске
