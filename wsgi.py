@@ -9,6 +9,7 @@ from datetime import datetime
 import time
 import tempfile
 import signal
+import aiohttp
 
 # Настройка логирования
 log_dir = os.path.join(tempfile.gettempdir(), 'app_logs')
@@ -48,6 +49,21 @@ async def health_check():
             logger.error(f"Ошибка при проверке состояния: {e}", exc_info=True)
             await asyncio.sleep(60)  # При ошибке ждем минуту перед следующей попыткой
 
+async def keep_alive():
+    """Поддержание активности приложения на Render"""
+    while True:
+        try:
+            # Отправляем GET запрос на корневой URL для поддержания активности
+            async with aiohttp.ClientSession() as session:
+                async with session.get('https://your-app-name.onrender.com/') as response:
+                    if response.status == 200:
+                        logger.info("Keep-alive запрос успешен")
+                    else:
+                        logger.warning(f"Keep-alive запрос вернул статус {response.status}")
+        except Exception as e:
+            logger.error(f"Ошибка при отправке keep-alive запроса: {e}")
+        await asyncio.sleep(300)  # Отправляем запрос каждые 5 минут
+
 async def run_all():
     # Запускаем Flask в отдельном потоке
     flask_thread = Thread(target=run_flask)
@@ -57,6 +73,9 @@ async def run_all():
     
     # Запускаем проверку состояния
     health_check_task = asyncio.create_task(health_check())
+    
+    # Запускаем keep-alive для Render
+    keep_alive_task = asyncio.create_task(keep_alive())
     
     try:
         logger.info("Запуск бота...")
@@ -81,6 +100,11 @@ async def run_all():
 def handle_exit(signum, frame):
     """Обработчик сигналов завершения"""
     logger.info(f"Получен сигнал завершения {signum}")
+    # Устанавливаем флаг остановки
+    if hasattr(main, 'stop_event'):
+        main.stop_event.set()
+    # Даем время на корректное завершение
+    time.sleep(2)
     sys.exit(0)
 
 if __name__ == '__main__':

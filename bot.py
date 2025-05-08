@@ -328,8 +328,39 @@ async def process_info_comment(update: Update, context: ContextTypes.DEFAULT_TYP
     return ConversationHandler.END
 
 
+async def check_bot_health():
+    """Проверка состояния бота"""
+    global bot_instance
+    while not stop_event.is_set():
+        try:
+            if bot_instance is not None:
+                # Проверяем соединение с Telegram API
+                try:
+                    await bot_instance.bot.get_me()
+                    logger.info("Проверка состояния бота: OK")
+                except Exception as e:
+                    logger.error(f"Ошибка при проверке состояния бота: {e}")
+                    # Перезапускаем бота при ошибке
+                    with bot_lock:
+                        try:
+                            await bot_instance.stop()
+                            await bot_instance.shutdown()
+                        except Exception as stop_error:
+                            logger.error(f"Ошибка при остановке бота: {stop_error}")
+                        bot_instance = None
+            await asyncio.sleep(60)  # Проверка каждую минуту
+        except Exception as e:
+            logger.error(f"Ошибка в проверке состояния бота: {e}")
+            await asyncio.sleep(60)
+
 async def main():
     global bot_instance, stop_event
+    
+    # Запускаем проверку состояния бота
+    health_check_task = asyncio.create_task(check_bot_health())
+    
+    retry_count = 0
+    max_retries = 5
     
     while not stop_event.is_set():
         try:
@@ -407,25 +438,61 @@ async def main():
                 logger.info("Бот успешно инициализирован")
 
             # Запускаем бота
-            await application.initialize()
-            await application.start()
-            await application.updater.start_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-            
-            # Ждем сигнала остановки
-            while not stop_event.is_set():
-                try:
-                    await asyncio.sleep(1)
-                except asyncio.CancelledError:
-                    logger.info("Получен сигнал отмены, начинаем корректное завершение работы...")
-                    break
-
-            # Корректное завершение работы
             try:
-                await application.stop()
-                await application.shutdown()
-                logger.info("Бот успешно остановлен")
+                await application.initialize()
+                await application.start()
+                await application.updater.start_polling(
+                    drop_pending_updates=True,
+                    allowed_updates=Update.ALL_TYPES,
+                    pool_timeout=30,  # Увеличиваем таймаут пула
+                    read_timeout=30,   # Увеличиваем таймаут чтения
+                    write_timeout=30,  # Увеличиваем таймаут записи
+                    connect_timeout=30, # Увеличиваем таймаут подключения
+                    bootstrap_retries=5, # Количество попыток при запуске
+                    read_retries=5,      # Количество попыток при чтении
+                    write_retries=5      # Количество попыток при записи
+                )
+                
+                # Сбрасываем счетчик попыток при успешном запуске
+                retry_count = 0
+                
+                # Ждем сигнала остановки
+                while not stop_event.is_set():
+                    try:
+                        await asyncio.sleep(1)
+                    except asyncio.CancelledError:
+                        logger.info("Получен сигнал отмены, начинаем корректное завершение работы...")
+                        break
+
+                # Корректное завершение работы
+                try:
+                    await application.updater.stop()
+                    await application.stop()
+                    await application.shutdown()
+                    logger.info("Бот успешно остановлен")
+                except Exception as e:
+                    logger.error(f"Ошибка при остановке бота: {e}", exc_info=True)
             except Exception as e:
-                logger.error(f"Ошибка при остановке бота: {e}", exc_info=True)
+                logger.error(f"Ошибка при запуске бота: {e}", exc_info=True)
+                if bot_instance is not None:
+                    try:
+                        await bot_instance.stop()
+                        await bot_instance.shutdown()
+                    except Exception as stop_error:
+                        logger.error(f"Ошибка при остановке бота после ошибки запуска: {stop_error}", exc_info=True)
+                    bot_instance = None
+                
+                # Увеличиваем счетчик попыток
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error(f"Достигнуто максимальное количество попыток ({max_retries}). Останавливаем бота.")
+                    stop_event.set()
+                    break
+                
+                # Экспоненциальная задержка перед следующей попыткой
+                delay = min(300, 5 * (2 ** retry_count))  # Максимум 5 минут
+                logger.info(f"Попытка переподключения через {delay} секунд...")
+                await asyncio.sleep(delay)
 
         except asyncio.CancelledError:
             logger.info("Получен сигнал отмены в основном цикле")
@@ -434,6 +501,13 @@ async def main():
             logger.error(f"Критическая ошибка в работе бота: {e}", exc_info=True)
             logger.info("Попытка переподключения через 5 секунд...")
             await asyncio.sleep(5)
+    
+    # Отменяем задачу проверки состояния
+    health_check_task.cancel()
+    try:
+        await health_check_task
+    except asyncio.CancelledError:
+        pass
 
 def handle_signal(signum, frame):
     """Обработчик сигналов завершения"""
