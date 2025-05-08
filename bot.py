@@ -15,6 +15,7 @@ from database import Database
 from flask import Flask
 from threading import Thread
 import os
+import asyncio
 
 # Создаем Flask приложение
 app = Flask(__name__)
@@ -306,69 +307,91 @@ async def process_info_comment(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def main():
-    application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
+    while True:  # Бесконечный цикл для переподключения
+        try:
+            application = ApplicationBuilder().token(Config.BOT_TOKEN).build()
 
-    refusal_conv = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex(r'^🚫 Отказ$'), handle_refusal)],
-        states={
-            STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
-            STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
-            STATES['ARTICLES']: [
-                MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
-            ],
-            STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
-            STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
-            STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
-        },
-        fallbacks=[
-            CommandHandler('cancel', cancel)
-        ],
-        name='refusal_conversation',
-        persistent=False
-    )
+            refusal_conv = ConversationHandler(
+                entry_points=[MessageHandler(filters.Regex(r'^🚫 Отказ$'), handle_refusal)],
+                states={
+                    STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
+                    STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
+                    STATES['ARTICLES']: [
+                        MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
+                        MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
+                    ],
+                    STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
+                    STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
+                    STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
+                },
+                fallbacks=[
+                    CommandHandler('cancel', cancel)
+                ],
+                name='refusal_conversation',
+                persistent=False
+            )
 
-    claim_conv = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex(r'^⚠️ Претензия$'), handle_claim)],
-        states={
-            STATES['CLAIM_TYPE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_claim_type)],
-            STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
-            STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
-            STATES['ARTICLES']: [
-                MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
-            ],
-            STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
-            STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
-            STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
-        },
-        fallbacks=[
-            CommandHandler('cancel', cancel)
-        ],
-        name='claim_conversation',
-        persistent=False
-    )
+            claim_conv = ConversationHandler(
+                entry_points=[MessageHandler(filters.Regex(r'^⚠️ Претензия$'), handle_claim)],
+                states={
+                    STATES['CLAIM_TYPE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_claim_type)],
+                    STATES['CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_client_code)],
+                    STATES['ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_route)],
+                    STATES['ARTICLES']: [
+                        MessageHandler(filters.Regex(r'^(➕ Добавить артикул|➡ Продолжить)$'), process_articles_or_continue),
+                        MessageHandler(filters.TEXT & ~filters.COMMAND, process_articles)
+                    ],
+                    STATES['QUANTITY']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_quantity)],
+                    STATES['DOCUMENT_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_document)],
+                    STATES['COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_comment)]
+                },
+                fallbacks=[
+                    CommandHandler('cancel', cancel)
+                ],
+                name='claim_conversation',
+                persistent=False
+            )
 
-    info_conv = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex(r'^ℹ️ Информация$'), handle_info)],
-        states={
-            STATES['INFO_CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_client_code)],
-            STATES['INFO_ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_route)],
-            STATES['INFO_COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_comment)]
-        },
-        fallbacks=[
-            CommandHandler('cancel', cancel)
-        ],
-        name='info_conversation',
-        persistent=False
-    )
+            info_conv = ConversationHandler(
+                entry_points=[MessageHandler(filters.Regex(r'^ℹ️ Информация$'), handle_info)],
+                states={
+                    STATES['INFO_CLIENT_CODE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_client_code)],
+                    STATES['INFO_ROUTE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_route)],
+                    STATES['INFO_COMMENT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_info_comment)]
+                },
+                fallbacks=[
+                    CommandHandler('cancel', cancel)
+                ],
+                name='info_conversation',
+                persistent=False
+            )
 
-    application.add_handler(refusal_conv)
-    application.add_handler(claim_conv)
-    application.add_handler(info_conv)
-    application.add_handler(CommandHandler('start', start))
+            application.add_handler(refusal_conv)
+            application.add_handler(claim_conv)
+            application.add_handler(info_conv)
+            application.add_handler(CommandHandler('start', start))
 
-    await application.run_polling()
+            # Добавляем обработчик ошибок
+            application.add_error_handler(error_handler)
+
+            print("Бот запущен и готов к работе")
+            await application.run_polling(drop_pending_updates=True)
+
+        except Exception as e:
+            print(f"Произошла ошибка: {e}")
+            print("Попытка переподключения через 5 секунд...")
+            await asyncio.sleep(5)  # Ждем 5 секунд перед повторной попыткой
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик ошибок бота"""
+    print(f"Произошла ошибка при обработке обновления {update}: {context.error}")
+    try:
+        if update and update.effective_message:
+            await update.effective_message.reply_text(
+                "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже."
+            )
+    except Exception as e:
+        print(f"Ошибка при отправке сообщения об ошибке: {e}")
 
 
 if __name__ == '__main__':
