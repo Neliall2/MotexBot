@@ -392,11 +392,32 @@ async def main():
             application.add_error_handler(error_handler)
 
             logger.info("Бот успешно инициализирован")
-            await application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-
+            
+            # Добавляем обработку сигналов завершения
+            stop_event = asyncio.Event()
+            
+            async def stop_bot():
+                logger.info("Получен сигнал остановки бота")
+                stop_event.set()
+                await application.stop()
+                await application.shutdown()
+            
+            # Запускаем бота с возможностью корректного завершения
+            await application.initialize()
+            await application.start()
+            await application.updater.start_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+            
+            # Ждем сигнала остановки
+            await stop_event.wait()
+            
         except Exception as e:
             logger.error(f"Критическая ошибка в работе бота: {e}", exc_info=True)
             logger.info("Попытка переподключения через 5 секунд...")
+            try:
+                await application.stop()
+                await application.shutdown()
+            except:
+                pass
             await asyncio.sleep(5)
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

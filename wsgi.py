@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 import time
 import tempfile
+import signal
 
 # Настройка логирования
 log_dir = os.path.join(tempfile.gettempdir(), 'app_logs')
@@ -57,22 +58,30 @@ async def run_all():
     # Запускаем проверку состояния
     health_check_task = asyncio.create_task(health_check())
     
-    while True:  # Бесконечный цикл для поддержания работы приложения
-        try:
-            logger.info("Запуск бота...")
-            await main()
-        except Exception as e:
-            logger.error(f"Ошибка в main: {e}", exc_info=True)
-            logger.info("Попытка перезапуска через 5 секунд...")
-            await asyncio.sleep(5)
-        finally:
-            # Очищаем все задачи при завершении
-            tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+    try:
+        logger.info("Запуск бота...")
+        await main()
+    except Exception as e:
+        logger.error(f"Ошибка в main: {e}", exc_info=True)
+        logger.info("Попытка перезапуска через 5 секунд...")
+        await asyncio.sleep(5)
+    finally:
+        # Очищаем все задачи при завершении
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+def handle_exit(signum, frame):
+    """Обработчик сигналов завершения"""
+    logger.info(f"Получен сигнал завершения {signum}")
+    sys.exit(0)
 
 if __name__ == '__main__':
+    # Регистрируем обработчики сигналов
+    signal.signal(signal.SIGTERM, handle_exit)
+    signal.signal(signal.SIGINT, handle_exit)
+    
     try:
         logger.info("Запуск приложения...")
         asyncio.run(run_all())
